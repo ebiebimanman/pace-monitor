@@ -140,9 +140,9 @@ export function ConditionChart({ day, hero, curve, zones, now, fill }: Props) {
         {past.length > 1 && <path d={path(past)} fill="none" stroke="var(--past)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />}
         {future.length > 1 && <path d={path(future)} fill="none" stroke="var(--accent)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />}
 
-        {day.logs.filter(isRecord).filter((e) => e.at >= t0 && e.at <= t1).map((e, i) => {
+        {stackRecords(day.logs, t0, t1, x).map(({ e, row }, i) => {
           const cx = x(e.at)
-          const cy = H - PAD.b - 12
+          const cy = H - PAD.b - 12 - row * 22
           return (
             <g key={`${e.type}-${e.at}-${i}`} style={{ color: 'var(--accent)' }}>
               <title>{`${RECORD_LABEL[e.type]} ${fmt(e.at)}`}</title>
@@ -172,6 +172,19 @@ export function ConditionChart({ day, hero, curve, zones, now, fill }: Props) {
       {hp && <ChartTip day={day} hero={hero} zones={zones} t={hp.t} value={hp.value} parts={hp.parts} left={x(hp.t)} width={W} />}
     </div>
   )
+}
+
+/** 近い時刻の記録は重ならないように上へ積む */
+function stackRecords(logs: LogEvent[], t0: number, t1: number, x: (t: number) => number) {
+  const out: { e: LogEvent & { type: RecordType }; row: number }[] = []
+  for (const e of logs.filter(isRecord).filter((e) => e.at >= t0 && e.at <= t1).sort((a, b) => a.at - b.at)) {
+    const near = out.filter((o) => Math.abs(x(o.e.at) - x(e.at)) < 20)
+    const used = new Set(near.map((o) => o.row))
+    let row = 0
+    while (used.has(row)) row++
+    out.push({ e, row })
+  }
+  return out
 }
 
 interface TipProps {
