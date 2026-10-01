@@ -54,6 +54,7 @@ export function computeHero(d: DayInput): Hero {
     cloudSum += weatherAt(w, 'cloud', t)
     n++
   }
+  n = Math.max(1, n)
   const rh = rhSum / n
   const temp = tempSum / n
   const cloud = cloudSum / n
@@ -127,7 +128,7 @@ export function computeCurve(d: DayInput, hero: Hero): Curve {
     raw.push({ t, parts, d: sum(parts) })
   }
   const work = raw.filter((p) => p.t >= w0 && p.t <= w1)
-  const mean = work.reduce((a, p) => a + p.d, 0) / work.length
+  const mean = work.length ? work.reduce((a, p) => a + p.d, 0) / work.length : 0
   const points = raw.map((p) => ({ t: p.t, parts: p.parts, value: clamp(hero.value + p.d - mean, 5, 100) }))
   return { points, mean, range }
 }

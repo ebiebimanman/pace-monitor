@@ -66,7 +66,7 @@ export function SettingsModal({ settings, exportData, onSave, onDeleteAll, onClo
         <button type="button" className="btn sec" onClick={onClose}>
           閉じる
         </button>
-        <button type="button" className="btn" onClick={() => onSave(s)}>
+        <button type="button" className="btn" disabled={s.workEnd <= s.workStart} onClick={() => onSave(s)}>
           保存
         </button>
       </div>

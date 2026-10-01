@@ -109,6 +109,9 @@ header.top {
   color: var(--muted);
   margin: 0;
 }
+.warn-text {
+  color: var(--dip-ink);
+}
 
 /* HERO */
 .hero {

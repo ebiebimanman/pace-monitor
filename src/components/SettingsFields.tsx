@@ -13,6 +13,7 @@ export function WorkFields({ s, set }: { s: Settings; set: Patch }) {
           〜
           <input type="time" id="set-we" aria-label="仕事の終了" step={900} value={s.workEnd} onChange={(e) => set({ workEnd: e.target.value })} />
         </div>
+        {s.workEnd <= s.workStart && <span className="quiet warn-text">終了は開始より後の時刻にしてください</span>}
       </div>
       <div className="field">
         <span className="lbl">いつもの昼休み</span>

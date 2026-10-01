@@ -37,10 +37,10 @@ export function OnboardingModal({ onDone }: { onDone: (s: Settings) => void }) {
             戻る
           </button>
         )}
-        <button type="button" className="btn sec" onClick={next}>
+        <button type="button" className="btn sec" disabled={s.workEnd <= s.workStart} onClick={next}>
           スキップ
         </button>
-        <button type="button" className="btn" onClick={next}>
+        <button type="button" className="btn" disabled={s.workEnd <= s.workStart} onClick={next}>
           {step < STEPS.length - 1 ? '次へ' : 'はじめる'}
         </button>
       </div>
