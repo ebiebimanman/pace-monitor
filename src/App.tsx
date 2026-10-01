@@ -1,75 +1,280 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { Checkin, HourlyWeather, Settings } from './lib/types'
-import { computeCurve, computeHero, findZones, heroComment, zoneText } from './lib/condition'
-import { fetchHourlyWeather } from './lib/weather'
-import { load, todayKey } from './lib/storage'
-import { fmt } from './lib/time'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import './App.css'
+import type { Aircon, Checkin, DayInput, LogEvent, Remedy, RemedyResult, Settings } from './lib/types'
+import { computeCurve, computeHero, findZones, hoursSince, zoneText } from './lib/condition'
+import { suggest, type Suggestion } from './lib/causes'
+import { todayKey } from './lib/storage'
+import { clamp, toHours } from './lib/time'
+import { hoursOf, useNow } from './hooks/useNow'
+import { emptyStore, useStore } from './hooks/useStore'
+import { NEUTRAL_WEATHER, useWeather } from './hooks/useWeather'
+import { useNotifications } from './hooks/useNotifications'
+import { useFitLayout } from './hooks/useFitLayout'
+import { HeroPanel } from './components/HeroPanel'
+import { StatusPanel } from './components/StatusPanel'
+import { ReflectionPanel } from './components/ReflectionPanel'
+import { CheckinModal } from './components/CheckinModal'
+import { SlumpModal } from './components/SlumpModal'
+import { OnboardingModal } from './components/OnboardingModal'
+import { SettingsModal } from './components/SettingsModal'
+import { Toast } from './components/Toast'
+import { useToast } from './hooks/useToast'
+import { PulseIcon } from './components/icons'
+import { RECORD_LABEL, type RecordType } from './lib/records'
 
-// 画面はプロトタイプからの移植待ち。今はロジックと天気取得がつながっていることを確認するための仮表示。
-const DEFAULT_SETTINGS: Settings = {
-  workStart: '09:00',
-  workEnd: '18:00',
-  lunchStart: '12:00',
-  lunchEnd: '13:00',
-  bed: '00:00',
-  wake: '07:00',
-  place: { name: '埼玉県狭山市', lat: 35.853, lon: 139.412 },
-  notify: { n1: true, n2: true, n3: false },
-}
+type Dialog = null | 'checkin' | 'checkin-edit' | 'slump' | 'settings'
 
-const DEFAULT_CHECKIN: Checkin = {
-  bed: '00:00',
-  wake: '07:00',
-  sleepQ: 2,
-  cond: 2,
-  symptoms: [],
-  aircon: 'none',
-  acTemp: 26,
-  skipped: true,
+const WEEKDAY = ['日', '月', '火', '水', '木', '金', '土']
+
+/** チェックインがない日の仮の回答（いつもの時刻・ふつう） */
+function provisionalCheckin(s: Settings, previous: Checkin | undefined): Checkin {
+  return {
+    bed: s.bed,
+    wake: s.wake,
+    sleepQ: 2,
+    cond: 2,
+    symptoms: [],
+    aircon: previous?.aircon ?? 'none',
+    acTemp: previous?.acTemp ?? 26,
+    skipped: true,
+  }
 }
 
 export default function App() {
-  const [settings] = useState(() => load('settings', DEFAULT_SETTINGS))
-  const [weather, setWeather] = useState<HourlyWeather | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const { store, update } = useStore()
+  const nowDate = useNow()
+  const now = hoursOf(nowDate)
+  const today = todayKey(nowDate)
+  const fit = useFitLayout()
+  const { toast, show, hide } = useToast()
+  const [dialog, setDialog] = useState<Dialog>(null)
+  // 自動で開いたチェックインを閉じた日。同じ日にもう一度は開かない
+  const [dismissedDay, setDismissedDay] = useState<string | null>(null)
 
+  const settings = store.settings
+  const weatherState = useWeather(settings?.place ?? null, today)
+  const weather =
+    weatherState.status === 'ready' ? weatherState.data : weatherState.status === 'error' && weatherState.data ? weatherState.data : NEUTRAL_WEATHER
+  const weatherNote =
+    weatherState.status === 'none'
+      ? '場所を設定すると天気を使えます'
+      : weatherState.status === 'loading'
+        ? '読み込み中…'
+        : weatherState.status === 'error' && !weatherState.data
+          ? weatherState.message
+          : null
+
+  const lastCheckin = useMemo(() => {
+    const days = Object.keys(store.checkins).filter((d) => d < today).sort()
+    return days.length ? store.checkins[days[days.length - 1]] : undefined
+  }, [store.checkins, today])
+  const todayCheckin = store.checkins[today]
+  const answered = Boolean(todayCheckin && !todayCheckin.skipped)
+  const logs = useMemo(() => store.logs[today] ?? [], [store.logs, today])
+  const remedies = useMemo(() => store.remedies[today] ?? [], [store.remedies, today])
+
+  // その日最初の表示ではチェックインを開く
+  const autoCheckin = Boolean(settings && !todayCheckin && dismissedDay !== today && dialog === null)
+  const checkinDialog = dialog === 'checkin' || dialog === 'checkin-edit' ? dialog : autoCheckin ? 'checkin' : null
+  const closeDialog = () => {
+    setDialog(null)
+    setDismissedDay(today)
+  }
+
+  // 2 時間たっても答えなかったふりかえりは未回答にする
   useEffect(() => {
-    if (!settings.place) return
-    fetchHourlyWeather(settings.place, todayKey())
-      .then(setWeather)
-      .catch((e: Error) => setError(e.message))
-  }, [settings.place])
+    if (remedies.some((r) => !r.result && now - r.at >= 2)) {
+      update((s) => ({
+        ...s,
+        remedies: { ...s.remedies, [today]: (s.remedies[today] ?? []).map((r) => (!r.result && now - r.at >= 2 ? { ...r, result: 'expired' } : r)) },
+      }))
+    }
+  }, [remedies, now, today, update])
 
-  const result = useMemo(() => {
-    if (!weather) return null
-    const day = { settings, checkin: DEFAULT_CHECKIN, logs: [], weather }
-    const hero = computeHero(day)
-    const curve = computeCurve(day, hero)
-    return { day, hero, zones: findZones(day, hero, curve) }
-  }, [weather, settings])
+  const day: DayInput | null = settings
+    ? { settings, checkin: todayCheckin ?? provisionalCheckin(settings, lastCheckin), logs, weather }
+    : null
+  // 15 分刻みで 50 点ほどの計算なので、描画ごとに計算し直す
+  const calc = day
+    ? (() => {
+        const hero = computeHero(day)
+        const curve = computeCurve(day, hero)
+        return { hero, curve, zones: findZones(day, hero, curve) }
+      })()
+    : null
+
+  useNotifications({
+    settings,
+    today,
+    now,
+    zones: calc?.zones ?? [],
+    zoneName: (z) => (day && calc ? zoneText(day, z, calc.hero.sleep).name : ''),
+    checkedIn: Boolean(todayCheckin),
+    ventHours: settings ? hoursSince(logs, 'window', now, toHours(settings.workStart)) : 0,
+    breakHours: settings ? hoursSince(logs, 'break', now, toHours(settings.workStart)) : 0,
+  })
+
+  const setLogs = useCallback(
+    (fn: (l: LogEvent[]) => LogEvent[]) => update((s) => ({ ...s, logs: { ...s.logs, [today]: fn(s.logs[today] ?? []) } })),
+    [update, today],
+  )
+  const setRemedies = useCallback(
+    (fn: (r: Remedy[]) => Remedy[]) => update((s) => ({ ...s, remedies: { ...s.remedies, [today]: fn(s.remedies[today] ?? []) } })),
+    [update, today],
+  )
+  const setCheckin = (c: Checkin) => update((s) => ({ ...s, checkins: { ...s.checkins, [today]: c } }))
+
+  const record = (type: RecordType) => {
+    const ev: LogEvent = { type, at: now }
+    setLogs((l) => [...l, ev])
+    show(`${RECORD_LABEL[type]}を記録しました`, () => setLogs((l) => l.filter((e) => !(e.type === ev.type && e.at === ev.at))))
+  }
+
+  const changeAircon = (aircon: Aircon) => {
+    if (!day) return
+    const cur = day.checkin
+    const acTemp = aircon !== cur.aircon && aircon !== 'none' ? (aircon === 'heat' ? 21 : 26) : cur.acTemp
+    setCheckin({ ...cur, aircon, acTemp })
+  }
+  const changeTemp = (delta: number) => {
+    if (!day) return
+    setCheckin({ ...day.checkin, acTemp: clamp(day.checkin.acTemp + delta, 16, 30) })
+  }
+
+  // 「集中切れた」で入れた記録。取り消しで同じものを消すために覚えておく
+  const [tryRecords] = useState(() => new Map<string, { log: LogEvent | null; remedy: Remedy }>())
+  const startSlump = (symptoms: string[]): Suggestion[] => {
+    if (!day) return []
+    const at = now
+    setRemedies((r) => r.map((x) => (x.result ? x : { ...x, result: 'expired' })))
+    setLogs((l) => [...l, { type: 'slump', at, symptoms }])
+    const history = Object.values(store.remedies).flat()
+    return suggest(day, at, symptoms, history)
+  }
+  const toggleTry = (s: Suggestion, on: boolean) => {
+    if (on) {
+      const log: LogEvent | null = s.log ? { type: s.log, at: now } : null
+      const remedy: Remedy = { cause: s.cause, action: s.action, at: now, result: null }
+      tryRecords.set(s.cause, { log, remedy })
+      if (log) setLogs((l) => [...l, log])
+      setRemedies((r) => [...r, remedy])
+    } else {
+      const rec = tryRecords.get(s.cause)
+      if (!rec) return
+      tryRecords.delete(s.cause)
+      const { log, remedy } = rec
+      if (log) setLogs((l) => l.filter((e) => !(e.type === log.type && e.at === log.at)))
+      setRemedies((r) => r.filter((x) => !(x.cause === remedy.cause && x.at === remedy.at)))
+    }
+  }
+  const answer = (remedy: Remedy, result: RemedyResult) =>
+    setRemedies((r) => r.map((x) => (x.cause === remedy.cause && x.at === remedy.at ? { ...x, result } : x)))
+
+  const dateLabel = `${nowDate.getMonth() + 1}月${nowDate.getDate()}日（${WEEKDAY[nowDate.getDay()]}）`
 
   return (
-    <main style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px' }}>
-      <h1 style={{ fontFamily: 'var(--f-display)' }}>ペース予報</h1>
-      <p>{settings.place?.name}</p>
-      {error && <p role="alert">{error}</p>}
-      {!result && !error && <p>天気を読み込んでいます…</p>}
-      {result && (
-        <>
-          <p style={{ fontSize: 48, fontFamily: 'var(--f-display)', margin: 0 }}>{result.hero.value}%</p>
-          <p>{heroComment(result.hero.value)}</p>
-          <ul>
-            {result.zones.map((z) => {
-              const text = zoneText(result.day, z, result.hero.sleep)
-              return (
-                <li key={z.start}>
-                  {fmt(z.start)}–{fmt(z.end)} {z.strong ? 'ペースダウン' : 'ややペースダウン'}（{text.name}）
-                </li>
-              )
-            })}
-          </ul>
-        </>
+    <div className="app">
+      <div className="wrap">
+        <header className="top">
+          <div className="brand">
+            <h1>ペース予報</h1>
+            <span>
+              {dateLabel}
+              {settings?.place && `・${settings.place.name}`}
+            </span>
+          </div>
+          {settings && (
+            <nav className="topnav">
+              <button type="button" className="ghost" onClick={() => setDialog(answered ? 'checkin-edit' : 'checkin')}>
+                {answered ? 'チェックインを編集' : 'チェックイン'}
+              </button>
+              <button type="button" className="ghost" onClick={() => setDialog('settings')}>
+                設定
+              </button>
+            </nav>
+          )}
+        </header>
+
+        {day && calc && (
+          <div className="grid">
+            <div className="col">
+              <HeroPanel
+                day={day}
+                hero={calc.hero}
+                curve={calc.curve}
+                zones={calc.zones}
+                now={now}
+                provisional={!todayCheckin || todayCheckin.skipped}
+                fill={fit}
+              />
+            </div>
+            <div className="col">
+              <StatusPanel day={day} now={now} weatherNote={weatherNote} onAircon={changeAircon} onTemp={changeTemp} onRecord={record} />
+              <ReflectionPanel remedies={remedies} now={now} onAnswer={answer} />
+              <button type="button" className="slump" onClick={() => setDialog('slump')}>
+                <PulseIcon />
+                集中切れた
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {!settings && (
+        <OnboardingModal
+          onDone={(s) => {
+            update((st) => ({ ...st, settings: s }))
+          }}
+        />
       )}
-    </main>
+      {settings && checkinDialog && (
+        <CheckinModal
+          initial={checkinDialog === 'checkin-edit' && todayCheckin ? todayCheckin : provisionalCheckin(settings, lastCheckin)}
+          editing={checkinDialog === 'checkin-edit'}
+          onSave={(c) => {
+            setCheckin(c)
+            closeDialog()
+            show(checkinDialog === 'checkin-edit' ? 'チェックインを更新しました' : '今日のコンディションを計算しました')
+          }}
+          onLater={() => {
+            setCheckin(provisionalCheckin(settings, lastCheckin))
+            closeDialog()
+            show('いつもの時刻で仮に計算しています。チェックインすると精度が上がります')
+          }}
+          onClose={closeDialog}
+        />
+      )}
+      {dialog === 'slump' && (
+        <SlumpModal
+          now={now}
+          onSymptoms={startSlump}
+          onTry={toggleTry}
+          onClose={(n) => {
+            tryRecords.clear()
+            setDialog(null)
+            if (n) show(`${n}つ試します。15分後にふりかえりに表示します`)
+          }}
+        />
+      )}
+      {settings && dialog === 'settings' && (
+        <SettingsModal
+          settings={settings}
+          exportData={() => JSON.stringify(store, null, 2)}
+          onSave={(s) => {
+            update((st) => ({ ...st, settings: s }))
+            setDialog(null)
+            show('設定を保存しました')
+          }}
+          onDeleteAll={() => {
+            update(() => emptyStore())
+            setDialog(null)
+            setDismissedDay(null)
+          }}
+          onClose={() => setDialog(null)}
+          toast={show}
+        />
+      )}
+      <Toast toast={toast} onHide={hide} />
+    </div>
   )
 }
