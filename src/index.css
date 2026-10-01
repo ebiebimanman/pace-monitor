@@ -1,0 +1,63 @@
+/* デザイントークン（プロトタイプと同じ値） */
+:root {
+  --bg: #eef2f4;
+  --surface: #ffffff;
+  --surface-2: #f6f8f9;
+  --ink: #1c2830;
+  --muted: #5b6b75;
+  --line: #d9e1e5;
+  --accent: #2f6f8f;
+  --accent-ink: #ffffff;
+  --accent-soft: #dcebf2;
+  --dip: #ece5fa;
+  --dip-strong: #d9ccf5;
+  --dip-ink: #5f4aa8;
+  --good: #2e7d5b;
+  --past: #a9b6bd;
+  --shadow: 0 1px 2px rgba(28, 40, 48, 0.06), 0 6px 24px rgba(28, 40, 48, 0.06);
+  --f-display: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'Noto Sans JP', sans-serif;
+  --f-body: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12181c;
+    --surface: #1a2228;
+    --surface-2: #202a31;
+    --ink: #e4ebef;
+    --muted: #9aabb5;
+    --line: #2e3a42;
+    --accent: #6fb3d2;
+    --accent-ink: #0d1a21;
+    --accent-soft: #1f3846;
+    --dip: #2a2440;
+    --dip-strong: #3a3160;
+    --dip-ink: #bba9f2;
+    --good: #6cc49a;
+    --past: #4f5d66;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 24px rgba(0, 0, 0, 0.25);
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
