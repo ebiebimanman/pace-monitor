@@ -2,7 +2,8 @@
 
 - 更新日：2026-10-01
 - 前版：v2（言い回し調査・画面仕様・算出ロジック）。本版はプロトタイプでの確定事項を反映した実装用の仕様
-- プロトタイプ：https://claude.ai/artifact/9nbytuHvLabxcRFtGQHuzG
+- 公開版：https://ebiebimanman.github.io/pace-monitor/
+- プロトタイプ：https://claude.ai/artifact/9nbytuHvLabxcRFtGQHuzG（claude.ai のログインが必要）
 
 ---
 
