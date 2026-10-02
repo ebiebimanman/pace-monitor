@@ -5,7 +5,7 @@ export type Hhmm = string
 
 export type Level = 1 | 2 | 3
 export type Aircon = 'heat' | 'cool' | 'none'
-export type Sex = 'female' | 'male' | 'other'
+export type Sex = 'female' | 'male'
 export type LogType = 'window' | 'break' | 'water' | 'meal' | 'slump'
 export type RemedyResult = 'better' | 'same' | 'unknown' | 'expired'
 

@@ -78,15 +78,14 @@ export function NotifyFields({ s, set }: { s: Settings; set: Patch }) {
 const SEX: [Sex, string][] = [
   ['female', '女性'],
   ['male', '男性'],
-  ['other', 'その他・答えない'],
 ]
 
 export function BodyFields({ s, set }: { s: Settings; set: Patch }) {
   return (
     <>
       <div className="field">
-        <span className="lbl">性別</span>
-        <span className="seg" role="group" aria-label="性別">
+        <span className="lbl">生物学的な性別</span>
+        <span className="seg" role="group" aria-label="生物学的な性別">
           {SEX.map(([k, l]) => (
             <button key={k} type="button" aria-pressed={s.sex === k} onClick={() => set({ sex: k })}>
               {l}
