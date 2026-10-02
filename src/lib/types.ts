@@ -6,6 +6,7 @@ export type Hhmm = string
 export type Level = 1 | 2 | 3
 export type Aircon = 'heat' | 'cool' | 'none'
 export type Sex = 'female' | 'male'
+export type Chronotype = 'morning' | 'neither' | 'evening'
 export type LogType = 'window' | 'break' | 'water' | 'meal' | 'slump'
 export type RemedyResult = 'better' | 'same' | 'unknown' | 'expired'
 
@@ -22,6 +23,8 @@ export interface Settings {
   wake: Hhmm
   place: Place | null
   notify: { n1: boolean; n2: boolean; n3: boolean }
+  /** 朝型・夜型。未回答なら「どちらでもない」として計算する */
+  chronotype?: Chronotype
   /** 未回答なら undefined */
   sex?: Sex
   /** 最終月経の開始日（YYYY-MM-DD）。女性を選んだ人だけ */

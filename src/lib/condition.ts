@@ -1,5 +1,5 @@
 import { cyclePhase } from './cycle'
-import type { DayInput, LogEvent, LogType } from './types'
+import type { Chronotype, DayInput, LogEvent, LogType } from './types'
 import { clamp, fmt, formatDuration, sleepHours, toHours } from './time'
 import { indoorHumidity } from './humidity'
 import { pressureDrop, weatherAt } from './weather'
@@ -96,6 +96,16 @@ export function lunchDipTime(d: DayInput): number | null {
   return meals.length ? Math.max(...meals.map((e) => e.at)) + 0.75 : null
 }
 
+/**
+ * 朝型・夜型で変える曲線の形（すべて起床からの時間）。
+ * 朝型は早く頭が働き、早く疲れる。夜型は起きてすぐがつらく、夕方に持ち直しやすい
+ */
+const CHRONO: Record<Chronotype, { grog: number; peakFrom: number; second: number; secondAt: number; tiredFrom: number }> = {
+  morning: { grog: 0.5, peakFrom: 0.5, second: 3, secondAt: 9.5, tiredFrom: 9 },
+  neither: { grog: 0.75, peakFrom: 1, second: 4, secondAt: 10.5, tiredFrom: 10 },
+  evening: { grog: 1.25, peakFrom: 2, second: 6, secondAt: 11.5, tiredFrom: 11 },
+}
+
 /** 仕様 5-3：その時刻の曲線の各項 */
 export function components(d: DayInput, t: number, sleep: number): Components {
   const { checkin: c, weather: w, logs } = d
@@ -105,12 +115,13 @@ export function components(d: DayInput, t: number, sleep: number): Components {
   const k = Math.min(1.6, 1 + Math.max(0, 7 - sleep) * 0.15)
   const dip = lunchDipTime(d)
   const temp = weatherAt(w, 'temp', t)
+  const ct = CHRONO[d.settings.chronotype ?? 'neither']
   return {
-    grog: -15 * Math.exp(-tau / 0.75),
-    morning: 6 * Math.sin((Math.PI * clamp(tau - 1, 0, 5)) / 5),
+    grog: -15 * Math.exp(-tau / ct.grog),
+    morning: 6 * Math.sin((Math.PI * clamp(tau - ct.peakFrom, 0, 5)) / 5),
     lunch: dip === null ? 0 : -10 * k * Math.exp(-((t - dip) ** 2) / (2 * 0.7 ** 2)),
-    second: 4 * Math.exp(-((t - (wake + 10.5)) ** 2) / (2 * 1.2 ** 2)),
-    fatigue: -Math.max(0, tau - 10),
+    second: ct.second * Math.exp(-((t - (wake + ct.secondAt)) ** 2) / (2 * 1.2 ** 2)),
+    fatigue: -Math.max(0, tau - ct.tiredFrom),
     vent: -Math.min(8, Math.max(0, (hoursSince(logs, 'window', t, workStart) * 60 - 60) / 10)),
     brk: -Math.min(8, Math.max(0, (hoursSince(logs, 'break', t, workStart) * 60 - 90) / 8)),
     sun: weatherAt(w, 'radiation', t) > 600 && t >= 13 && t <= 17 ? -3 : 0,

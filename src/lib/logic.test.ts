@@ -127,3 +127,18 @@ describe('月経周期', () => {
     expect(hero.value).toBeLessThan(computeHero(sampleDay).value)
   })
 })
+
+describe('朝型・夜型', () => {
+  const at = (chronotype: 'morning' | 'neither' | 'evening') => {
+    const day = { ...sampleDay, settings: { ...sampleDay.settings, chronotype } }
+    const curve = computeCurve(day, computeHero(day))
+    const v = (t: number) => curve.points.reduce((a, p) => (Math.abs(p.t - t) < Math.abs(a.t - t) ? p : a)).value
+    return { early: v(9), late: v(17.5) }
+  }
+  it('朝型は朝が高く、夜型は夕方が高い', () => {
+    const m = at('morning')
+    const e = at('evening')
+    expect(m.early).toBeGreaterThan(e.early)
+    expect(e.late).toBeGreaterThan(m.late)
+  })
+})

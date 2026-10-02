@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Settings, Sex } from '../lib/types'
+import type { Chronotype, Settings, Sex } from '../lib/types'
 import { DEFAULT_CYCLE } from '../lib/cycle'
 import { todayKey } from '../lib/storage'
 
@@ -21,17 +21,36 @@ export function WorkFields({ s, set }: { s: Settings; set: Patch }) {
   )
 }
 
+const CHRONOTYPE: [Chronotype, string][] = [
+  ['morning', '朝型'],
+  ['neither', 'どちらでもない'],
+  ['evening', '夜型'],
+]
+
 export function SleepFields({ s, set }: { s: Settings; set: Patch }) {
   return (
-    <div className="field">
-      <span className="lbl">いつもの就寝・起床時刻</span>
-      <div className="row">
-        <label htmlFor="set-bed">就寝</label>
-        <input type="time" id="set-bed" value={s.bed} onChange={(e) => set({ bed: e.target.value })} />
-        <label htmlFor="set-wake">起床</label>
-        <input type="time" id="set-wake" value={s.wake} onChange={(e) => set({ wake: e.target.value })} />
+    <>
+      <div className="field">
+        <span className="lbl">いつもの就寝・起床時刻</span>
+        <div className="row">
+          <label htmlFor="set-bed">就寝</label>
+          <input type="time" id="set-bed" value={s.bed} onChange={(e) => set({ bed: e.target.value })} />
+          <label htmlFor="set-wake">起床</label>
+          <input type="time" id="set-wake" value={s.wake} onChange={(e) => set({ wake: e.target.value })} />
+        </div>
       </div>
-    </div>
+      <div className="field">
+        <span className="lbl">朝型・夜型</span>
+        <span className="seg" role="group" aria-label="朝型・夜型">
+          {CHRONOTYPE.map(([k, l]) => (
+            <button key={k} type="button" aria-pressed={(s.chronotype ?? 'neither') === k} onClick={() => set({ chronotype: k })}>
+              {l}
+            </button>
+          ))}
+        </span>
+        <span className="quiet">頭がいちばん冴えるのが午前なら朝型、夕方以降なら夜型です。1日のコンディションの波の形に使います。</span>
+      </div>
+    </>
   )
 }
 
