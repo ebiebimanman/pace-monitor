@@ -55,6 +55,26 @@ interface GeocodingResponse {
 }
 
 /** 市区町村名から候補を探す（国内のみ） */
+interface ReverseResponse {
+  address?: { province?: string; state?: string; city?: string; town?: string; village?: string }
+}
+
+/** 緯度経度から「埼玉県狭山市」のような名前を引く（OpenStreetMap Nominatim）。引けなければ null */
+export async function placeNameAt(lat: number, lon: number): Promise<string | null> {
+  const params = new URLSearchParams({ format: 'jsonv2', lat: String(lat), lon: String(lon), zoom: '10', 'accept-language': 'ja' })
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`)
+    if (!res.ok) return null
+    const { address } = (await res.json()) as ReverseResponse
+    if (!address) return null
+    const pref = address.province ?? address.state ?? ''
+    const city = address.city ?? address.town ?? address.village ?? ''
+    return pref + city || null
+  } catch {
+    return null
+  }
+}
+
 export async function searchPlaces(query: string): Promise<Place[]> {
   const params = new URLSearchParams({ name: query, count: '5', language: 'ja', countryCode: 'JP' })
   const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`)

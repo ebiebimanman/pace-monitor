@@ -444,7 +444,7 @@ details.breakdown summary {
 }
 .taps {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-top: 14px;
 }
@@ -458,6 +458,32 @@ details.breakdown summary {
   flex-direction: column;
   align-items: center;
   gap: 2px;
+}
+.tap-wrap {
+  position: relative;
+  display: grid;
+}
+.tap-hint {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  width: 240px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  -webkit-backdrop-filter: blur(6px) saturate(1.2);
+  backdrop-filter: blur(6px) saturate(1.2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  pointer-events: none;
+}
+.tap-wrap:hover .tap-hint,
+.tap-wrap:focus-within .tap-hint {
+  display: block;
 }
 .tap:hover {
   border-color: var(--accent);
@@ -591,6 +617,8 @@ details.breakdown summary {
   font-weight: 500;
 }
 input[type='time'],
+input[type='date'],
+input[type='number'],
 input[type='text'] {
   border: 1px solid var(--line);
   background: var(--surface-2);
@@ -873,4 +901,19 @@ input[type='text'] {
   width: 100%;
   justify-content: center;
   flex: none;
+}
+
+/* グラフの記録アイコン（押すと編集） */
+.chart .rec {
+  cursor: pointer;
+}
+.chart .rec:hover circle,
+.chart .rec:focus-visible circle {
+  stroke: var(--accent);
+}
+.chart .rec:focus {
+  outline: none;
+}
+input[type='number'] {
+  width: 4.5em;
 }

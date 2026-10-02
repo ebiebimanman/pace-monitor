@@ -1,4 +1,5 @@
-import type { DayInput } from '../lib/types'
+import type { DayInput, LogEvent } from '../lib/types'
+import type { RecordType } from '../lib/records'
 import type { ComponentKey, Curve, Hero, PaceDownZone } from '../lib/condition'
 import { componentLabel, heroComment, valueAt, zoneText } from '../lib/condition'
 import { fmt, toHours } from '../lib/time'
@@ -12,9 +13,10 @@ interface Props {
   now: number
   provisional: boolean
   fill: boolean
+  onEditRecord: (e: LogEvent & { type: RecordType }) => void
 }
 
-export function HeroPanel({ day, hero, curve, zones, now, provisional, fill }: Props) {
+export function HeroPanel({ day, hero, curve, zones, now, provisional, fill, onEditRecord }: Props) {
   return (
     <section className="panel main" aria-labelledby="heroH">
       <div className="hero">
@@ -27,7 +29,7 @@ export function HeroPanel({ day, hero, curve, zones, now, provisional, fill }: P
             今日のコンディション
             {provisional && <span className="badge" title="チェックインすると精度が上がります">仮</span>}
           </h2>
-          <p className="sub">睡眠・体調・天気から見た、今日の力の出しやすさ</p>
+          <p className="sub">睡眠・体調・天気から計算した、今日の集中しやすさ</p>
           <p className="comment">{heroComment(hero.value)}</p>
           <details className="breakdown">
             <summary>内訳を見る</summary>
@@ -61,14 +63,14 @@ export function HeroPanel({ day, hero, curve, zones, now, provisional, fill }: P
           </span>
         </div>
       </div>
-      <ConditionChart day={day} hero={hero} curve={curve} zones={zones} now={now} fill={fill} />
-      <p className="chart-hint">グラフにカーソルを合わせる（タップする）と、1時間ごとのコンディションと理由が見られます。クリックで固定。</p>
+      <ConditionChart day={day} hero={hero} curve={curve} zones={zones} now={now} fill={fill} onEditRecord={onEditRecord} />
+      <p className="chart-hint">グラフにカーソルを合わせるかタップすると、1時間ごとのコンディションと、上がり下がりの理由を表示します。クリックすると表示を固定できます。下の記録のアイコンを押すと、時刻を直せます。</p>
       <NowCard day={day} hero={hero} curve={curve} zones={zones} now={now} />
     </section>
   )
 }
 
-function NowCard({ day, hero, curve, zones, now }: Omit<Props, 'provisional' | 'fill'>) {
+function NowCard({ day, hero, curve, zones, now }: Omit<Props, 'provisional' | 'fill' | 'onEditRecord'>) {
   const { parts, value } = valueAt(day, hero, curve, now)
   const zone = zones.find((z) => now >= z.start && now <= z.end)
   const next = zones.find((z) => z.start > now)
@@ -81,7 +83,7 @@ function NowCard({ day, hero, curve, zones, now }: Omit<Props, 'provisional' | '
   return (
     <div className={`nowc${zone ? ' in' : ''}`}>
       <div className="nc-head">
-        <span className="label">いま {fmt(now)}</span>
+        <span className="label">いま{fmt(now)}</span>
         <span className="nc-v">{Math.round(value)}%</span>
         <span className="nc-st">
           {zone && zt

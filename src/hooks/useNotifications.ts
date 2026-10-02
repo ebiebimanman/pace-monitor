@@ -39,19 +39,19 @@ export function pickNotification(i: Input, sent: Sent): { id: string; title: str
         return {
           id,
           title: 'まもなくペースダウン時間です',
-          body: `${fmt(z.start)}頃から（${i.zoneName(z)}）。軽めの作業を手元に用意しておくとラクです。`,
+          body: `${fmt(z.start)}頃から集中が落ちやすくなります（${i.zoneName(z)}）。軽い作業を用意しておきましょう。`,
         }
       }
     }
   }
   if (s.notify.n2 && !i.checkedIn && i.now >= w0 && fresh('n2')) {
-    return { id: 'n2', title: '今日のチェックインがまだです', body: '今日のコンディションを計算するために、30秒だけ教えてください。' }
+    return { id: 'n2', title: '今日のチェックインがまだです', body: '30秒ほどで答えられます。答えると、今日のコンディションを計算します。' }
   }
   if (s.notify.n3) {
     const z = i.zones.find((z) => i.now >= z.start && i.now <= z.end)
     const id = z && `n3-${z.start}`
     if (z && id && fresh(id) && (i.ventHours > 1.5 || i.breakHours > 2)) {
-      return { id, title: 'ひとこと', body: '窓を開けるか、少し休むとラクになるかもしれません。' }
+      return { id, title: '換気か休憩をどうぞ', body: '集中が落ちやすい時間です。窓を開けるか、少し休憩してください。' }
     }
   }
   return null

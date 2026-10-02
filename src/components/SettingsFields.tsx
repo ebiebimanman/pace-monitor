@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import type { Settings } from '../lib/types'
+import type { Settings, Sex } from '../lib/types'
+import { DEFAULT_CYCLE } from '../lib/cycle'
+import { todayKey } from '../lib/storage'
 
 type Patch = (p: Partial<Settings>) => void
 
@@ -7,22 +9,13 @@ export function WorkFields({ s, set }: { s: Settings; set: Patch }) {
   return (
     <>
       <div className="field">
-        <span className="lbl">仕事する時間</span>
+        <span className="lbl">仕事の時間</span>
         <div className="row">
           <input type="time" id="set-ws" aria-label="仕事の開始" step={900} value={s.workStart} onChange={(e) => set({ workStart: e.target.value })} />
           〜
           <input type="time" id="set-we" aria-label="仕事の終了" step={900} value={s.workEnd} onChange={(e) => set({ workEnd: e.target.value })} />
         </div>
         {s.workEnd <= s.workStart && <span className="quiet warn-text">終了は開始より後の時刻にしてください</span>}
-      </div>
-      <div className="field">
-        <span className="lbl">いつもの昼休み</span>
-        <div className="row">
-          <input type="time" id="set-ls" aria-label="昼休みの開始" value={s.lunchStart} onChange={(e) => set({ lunchStart: e.target.value })} />
-          〜
-          <input type="time" id="set-le" aria-label="昼休みの終了" value={s.lunchEnd} onChange={(e) => set({ lunchEnd: e.target.value })} />
-        </div>
-        <span className="quiet">食後に集中が落ちる時間の予測に使います</span>
       </div>
     </>
   )
@@ -43,9 +36,9 @@ export function SleepFields({ s, set }: { s: Settings; set: Patch }) {
 }
 
 const NOTIFY: [keyof Settings['notify'], string, string][] = [
-  ['n1', 'ペースダウン時間の5分前', '軽めの作業に切り替える合図'],
-  ['n2', 'チェックインのリマインド', '仕事開始を過ぎても未回答のとき1回だけ'],
-  ['n3', '換気・休憩のひとこと', 'ペースダウン時間中だけ'],
+  ['n1', 'ペースダウン時間の5分前', '軽い作業に切り替える時間をお知らせします'],
+  ['n2', 'チェックインのリマインド', '仕事の開始時刻を過ぎてもチェックインしていないとき、1回だけお知らせします'],
+  ['n3', '換気・休憩のおすすめ', 'ペースダウン時間の間だけお知らせします'],
 ]
 
 export function NotifyFields({ s, set }: { s: Settings; set: Patch }) {
@@ -54,7 +47,7 @@ export function NotifyFields({ s, set }: { s: Settings; set: Patch }) {
   return (
     <div className="field">
       <span className="lbl">通知</span>
-      <span className="quiet">このタブを開いている間だけ届きます。集中している時間には出しません。</span>
+      <span className="quiet">通知は、このタブを開いている間だけ届きます。集中できている時間帯には送りません。</span>
       {NOTIFY.map(([k, label, sub]) => (
         <div className="toggle" key={k}>
           <label htmlFor={`set-${k}`}>
@@ -79,5 +72,48 @@ export function NotifyFields({ s, set }: { s: Settings; set: Patch }) {
         <span className="quiet">ブラウザで通知がブロックされています。サイトの設定から許可してください。</span>
       )}
     </div>
+  )
+}
+
+const SEX: [Sex, string][] = [
+  ['female', '女性'],
+  ['male', '男性'],
+  ['other', 'その他・答えない'],
+]
+
+export function BodyFields({ s, set }: { s: Settings; set: Patch }) {
+  return (
+    <>
+      <div className="field">
+        <span className="lbl">性別</span>
+        <span className="seg" role="group" aria-label="性別">
+          {SEX.map(([k, l]) => (
+            <button key={k} type="button" aria-pressed={s.sex === k} onClick={() => set({ sex: k })}>
+              {l}
+            </button>
+          ))}
+        </span>
+      </div>
+      {s.sex === 'female' && (
+        <div className="field">
+          <span className="lbl">最終月経</span>
+          <div className="row">
+            <label htmlFor="set-lp">始まった日</label>
+            <input type="date" id="set-lp" max={todayKey()} value={s.lastPeriod ?? ''} onChange={(e) => set({ lastPeriod: e.target.value || null })} />
+            <label htmlFor="set-cl">周期</label>
+            <input
+              type="number"
+              id="set-cl"
+              min={20}
+              max={45}
+              value={s.cycleLength ?? DEFAULT_CYCLE}
+              onChange={(e) => set({ cycleLength: Number(e.target.value) || DEFAULT_CYCLE })}
+            />
+            日
+          </div>
+          <span className="quiet">月経中と月経前の数日は、コンディションを低めに予報します。周期がわからなければ28日のままで大丈夫です。次に始まったら、朝のチェックインで記録できます。</span>
+        </div>
+      )}
+    </>
   )
 }

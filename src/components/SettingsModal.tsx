@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Settings } from '../lib/types'
 import { Modal } from './Modal'
 import { PlacePicker } from './PlacePicker'
-import { NotifyFields, SleepFields, WorkFields } from './SettingsFields'
+import { BodyFields, NotifyFields, SleepFields, WorkFields } from './SettingsFields'
 
 interface Props {
   settings: Settings
@@ -21,9 +21,10 @@ export function SettingsModal({ settings, exportData, onSave, onDeleteAll, onClo
   return (
     <Modal label="設定" onClose={onClose}>
       <h3>設定</h3>
-      <p className="lead">冷暖房は、毎朝のチェックインとホームで変更します。</p>
+      <p className="lead">冷暖房は、毎朝のチェックインかホーム画面で変更してください。</p>
       <WorkFields s={s} set={set} />
       <SleepFields s={s} set={set} />
+      <BodyFields s={s} set={set} />
       <PlacePicker value={s.place} onChange={(place) => set({ place })} />
       <NotifyFields s={s} set={set} />
 
@@ -41,7 +42,7 @@ export function SettingsModal({ settings, exportData, onSave, onDeleteAll, onClo
               )
             }
           >
-            データをコピー（JSON）
+            データをJSONでコピー
           </button>
           <button type="button" className="btn sec" onClick={() => setConfirming(true)}>
             すべて削除

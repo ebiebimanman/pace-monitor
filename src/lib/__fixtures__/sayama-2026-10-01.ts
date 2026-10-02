@@ -14,8 +14,6 @@ export const sampleDay: DayInput = {
   settings: {
     workStart: '09:00',
     workEnd: '18:00',
-    lunchStart: '12:00',
-    lunchEnd: '13:00',
     bed: '00:00',
     wake: '07:00',
     place: { name: '埼玉県狭山市', lat: 35.853, lon: 139.412 },
@@ -34,6 +32,7 @@ export const sampleDay: DayInput = {
   logs: [
     { type: 'window', at: 10.5 },
     { type: 'water', at: 11.17 },
+    { type: 'meal', at: 13 },
     { type: 'break', at: 13 },
   ],
   weather: sayamaWeather,

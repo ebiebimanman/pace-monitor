@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import type { Aircon, Checkin, DayInput, LogEvent, Remedy, RemedyResult, Settings } from './lib/types'
-import { computeCurve, computeHero, findZones, hoursSince, zoneText } from './lib/condition'
+import { computeCurve, computeHero, findZones, hoursSince, mealPreview, zoneText } from './lib/condition'
 import { suggest, type Suggestion } from './lib/causes'
+import { cycleInfo } from './lib/cycle'
 import { todayKey } from './lib/storage'
-import { clamp, toHours } from './lib/time'
+import { clamp, fmt, toHours } from './lib/time'
 import { hoursOf, useNow } from './hooks/useNow'
 import { emptyStore, useStore } from './hooks/useStore'
 import { NEUTRAL_WEATHER, useWeather } from './hooks/useWeather'
@@ -15,6 +16,8 @@ import { StatusPanel } from './components/StatusPanel'
 import { ReflectionPanel } from './components/ReflectionPanel'
 import { CheckinModal } from './components/CheckinModal'
 import { SlumpModal } from './components/SlumpModal'
+import { BreakModal } from './components/BreakModal'
+import { RecordEditModal } from './components/RecordEditModal'
 import { OnboardingModal } from './components/OnboardingModal'
 import { SettingsModal } from './components/SettingsModal'
 import { Toast } from './components/Toast'
@@ -22,7 +25,7 @@ import { useToast } from './hooks/useToast'
 import { PulseIcon } from './components/icons'
 import { RECORD_LABEL, type RecordType } from './lib/records'
 
-type Dialog = null | 'checkin' | 'checkin-edit' | 'slump' | 'settings'
+type Dialog = null | 'checkin' | 'checkin-edit' | 'slump' | 'settings' | 'break'
 
 const WEEKDAY = ['日', '月', '火', '水', '木', '金', '土']
 
@@ -48,6 +51,8 @@ export default function App() {
   const fit = useFitLayout()
   const { toast, show, hide } = useToast()
   const [dialog, setDialog] = useState<Dialog>(null)
+  // グラフのアイコンから編集中の記録
+  const [editing, setEditing] = useState<(LogEvent & { type: RecordType }) | null>(null)
   // 自動で開いたチェックインを閉じた日。同じ日にもう一度は開かない
   const [dismissedDay, setDismissedDay] = useState<string | null>(null)
 
@@ -57,7 +62,7 @@ export default function App() {
     weatherState.status === 'ready' ? weatherState.data : weatherState.status === 'error' && weatherState.data ? weatherState.data : NEUTRAL_WEATHER
   const weatherNote =
     weatherState.status === 'none'
-      ? '場所を設定すると天気を使えます'
+      ? '設定で場所を選ぶと、天気を予報に反映できます'
       : weatherState.status === 'loading'
         ? '読み込み中…'
         : weatherState.status === 'error' && !weatherState.data
@@ -92,7 +97,7 @@ export default function App() {
   }, [remedies, now, today, update])
 
   const day: DayInput | null = settings
-    ? { settings, checkin: todayCheckin ?? provisionalCheckin(settings, lastCheckin), logs, weather }
+    ? { settings, checkin: todayCheckin ?? provisionalCheckin(settings, lastCheckin), logs, weather, cycle: cycleInfo(settings, today) }
     : null
   // 15 分刻みで 50 点ほどの計算なので、描画ごとに計算し直す
   const calc = day
@@ -124,10 +129,13 @@ export default function App() {
   )
   const setCheckin = (c: Checkin) => update((s) => ({ ...s, checkins: { ...s.checkins, [today]: c } }))
 
-  const record = (type: RecordType) => {
-    const ev: LogEvent = { type, at: now }
+  const record = (type: RecordType, minutes?: number) => {
+    // 休憩は長さを選んでから記録する
+    if (type === 'break' && minutes === undefined) return setDialog('break')
+    const ev: LogEvent = minutes === undefined ? { type, at: now } : { type, at: now, minutes }
     setLogs((l) => [...l, ev])
-    show(`${RECORD_LABEL[type]}を記録しました`, () => setLogs((l) => l.filter((e) => !(e.type === ev.type && e.at === ev.at))))
+    const label = minutes === undefined ? RECORD_LABEL[type] : `${RECORD_LABEL[type]}（${minutes}分）`
+    show(`${label}を記録しました`, () => setLogs((l) => l.filter((e) => !(e.type === ev.type && e.at === ev.at))))
   }
 
   const changeAircon = (aircon: Aircon) => {
@@ -153,7 +161,8 @@ export default function App() {
   }
   const toggleTry = (s: Suggestion, on: boolean) => {
     if (on) {
-      const log: LogEvent | null = s.log ? { type: s.log, at: now } : null
+      // 対処の休憩はどれも 5 分
+      const log: LogEvent | null = s.log ? (s.log === 'break' ? { type: s.log, at: now, minutes: 5 } : { type: s.log, at: now }) : null
       const remedy: Remedy = { cause: s.cause, action: s.action, at: now, result: null }
       tryRecords.set(s.cause, { log, remedy })
       if (log) setLogs((l) => [...l, log])
@@ -206,10 +215,11 @@ export default function App() {
                 now={now}
                 provisional={!todayCheckin || todayCheckin.skipped}
                 fill={fit}
+                onEditRecord={setEditing}
               />
             </div>
             <div className="col">
-              <StatusPanel day={day} now={now} weatherNote={weatherNote} onAircon={changeAircon} onTemp={changeTemp} onRecord={record} />
+              <StatusPanel day={day} now={now} weatherNote={weatherNote} onAircon={changeAircon} onTemp={changeTemp} onRecord={record} mealHint={mealPreview(day, now)} />
               <ReflectionPanel remedies={remedies} now={now} onAnswer={answer} />
               <button type="button" className="slump" onClick={() => setDialog('slump')}>
                 <PulseIcon />
@@ -231,15 +241,22 @@ export default function App() {
         <CheckinModal
           initial={checkinDialog === 'checkin-edit' && todayCheckin ? todayCheckin : provisionalCheckin(settings, lastCheckin)}
           editing={checkinDialog === 'checkin-edit'}
+          askPeriod={settings.sex === 'female'}
           onSave={(c) => {
-            setCheckin(c)
+            // 「今日から始まった」は最終月経の開始日として覚える。外したら元の日に戻す
+            const prevStart = todayCheckin?.periodStarted ? (todayCheckin.prevLastPeriod ?? null) : (settings.lastPeriod ?? null)
+            setCheckin(c.periodStarted ? { ...c, prevLastPeriod: prevStart } : c)
+            if (c.periodStarted || todayCheckin?.periodStarted) {
+              const lastPeriod = c.periodStarted ? today : prevStart
+              update((st) => ({ ...st, settings: st.settings && { ...st.settings, lastPeriod } }))
+            }
             closeDialog()
             show(checkinDialog === 'checkin-edit' ? 'チェックインを更新しました' : '今日のコンディションを計算しました')
           }}
           onLater={() => {
             setCheckin(provisionalCheckin(settings, lastCheckin))
             closeDialog()
-            show('いつもの時刻で仮に計算しています。チェックインすると精度が上がります')
+            show('いつもの就寝・起床時刻で仮に計算しました。チェックインすると、今日の睡眠と体調で計算し直します')
           }}
           onClose={closeDialog}
         />
@@ -252,8 +269,35 @@ export default function App() {
           onClose={(n) => {
             tryRecords.clear()
             setDialog(null)
-            if (n) show(`${n}つ試します。15分後にふりかえりに表示します`)
+            if (n) show(`${n}つの対処を試す予定にしました。15分後に、ラクになったかを「ふりかえり」で聞きます`)
           }}
+        />
+      )}
+      {editing && (
+        <RecordEditModal
+          record={editing}
+          now={now}
+          onSave={(next) => {
+            setLogs((l) => l.map((e) => (e.type === editing.type && e.at === editing.at ? next : e)))
+            setEditing(null)
+            show(`${RECORD_LABEL[editing.type]}の時刻を${fmt(next.at)}に直しました`)
+          }}
+          onDelete={() => {
+            const old = editing
+            setLogs((l) => l.filter((e) => !(e.type === old.type && e.at === old.at)))
+            setEditing(null)
+            show(`${RECORD_LABEL[old.type]}の記録を削除しました`, () => setLogs((l) => [...l, old]))
+          }}
+          onClose={() => setEditing(null)}
+        />
+      )}
+      {dialog === 'break' && (
+        <BreakModal
+          onPick={(m) => {
+            setDialog(null)
+            record('break', m)
+          }}
+          onClose={() => setDialog(null)}
         />
       )}
       {settings && dialog === 'settings' && (

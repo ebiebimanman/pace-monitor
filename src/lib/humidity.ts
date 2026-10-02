@@ -18,9 +18,10 @@ export function indoorHumidity(w: HourlyWeather, t: number, aircon: Aircon, acTe
   return aircon === 'cool' ? clamp(rhIn, 40, 65) : rhIn
 }
 
-export function humidityLabel(rh: number): string {
+/** 湿度の注意書き。「蒸し暑い」は室温が 25℃ 以上のときだけで、それより涼しければ「湿気が多め」 */
+export function humidityLabel(rh: number, tempC: number): string {
   if (rh < 30) return 'かなり乾燥'
   if (rh < 40) return '乾燥ぎみ'
-  if (rh > 70) return '蒸し暑い'
+  if (rh > 70) return tempC >= 25 ? '蒸し暑い' : '湿気が多め'
   return ''
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Place } from '../lib/types'
-import { searchPlaces } from '../lib/weather'
+import { placeNameAt, searchPlaces } from '../lib/weather'
 
 interface Props {
   value: Place | null
@@ -9,7 +9,7 @@ interface Props {
 
 /** 市区町村の検索、または現在地で場所を決める */
 export function PlacePicker({ value, onChange }: Props) {
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(value && value.name !== '現在地' ? value.name : '')
   const [results, setResults] = useState<Place[] | null>(null)
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -21,7 +21,7 @@ export function PlacePicker({ value, onChange }: Props) {
     try {
       const r = await searchPlaces(query.trim())
       setResults(r)
-      if (!r.length) setNote('見つかりませんでした。市区町村名で試してください（例：狭山市）')
+      if (!r.length) setNote('見つかりませんでした。「狭山市」のように市区町村名で検索してください')
     } catch (e) {
       setNote(e instanceof Error ? e.message : '検索できませんでした')
     } finally {
@@ -36,11 +36,14 @@ export function PlacePicker({ value, onChange }: Props) {
     }
     setBusy(true)
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords
+        const name = await placeNameAt(lat, lon)
         setBusy(false)
-        onChange({ name: '現在地', lat: pos.coords.latitude, lon: pos.coords.longitude })
+        onChange({ name: name ?? '現在地', lat, lon })
+        setQuery(name ?? '')
         setResults(null)
-        setNote('')
+        setNote(name ? '' : '現在地は取得できましたが、地名を調べられませんでした。天気は現在地のものを使います')
       },
       () => {
         setBusy(false)
@@ -52,7 +55,7 @@ export function PlacePicker({ value, onChange }: Props) {
 
   return (
     <div className="field">
-      <span className="lbl">場所{value && <span className="quiet">　いま：{value.name}</span>}</span>
+      <span className="lbl">場所{value && <span className="quiet">　設定中：{value.name}</span>}</span>
       <form
         className="row"
         onSubmit={(e) => {
@@ -85,6 +88,7 @@ export function PlacePicker({ value, onChange }: Props) {
               aria-pressed={value?.lat === p.lat && value?.lon === p.lon}
               onClick={() => {
                 onChange(p)
+                setQuery(p.name)
                 setResults(null)
               }}
             >

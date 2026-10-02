@@ -22,7 +22,7 @@ export function SlumpModal({ now, onSymptoms, onTry, onClose }: Props) {
     return (
       <Modal label="集中切れた" onClose={close}>
         <h3>どんな感じ？</h3>
-        <p className="lead">当てはまるものを選んでください（複数可）。</p>
+        <p className="lead">当てはまるものをすべて選んでください。</p>
         <div className="chips">
           {SYMPTOMS.map((s) => (
             <button
@@ -52,7 +52,7 @@ export function SlumpModal({ now, onSymptoms, onTry, onClose }: Props) {
     <Modal label="やってみよう" onClose={close}>
       <h3>やってみよう</h3>
       <p className="lead">
-        {selected.join('・')}　{fmt(now)}　効きそうな順に並べています。いくつ選んでもOK
+        {selected.join('・')}（{fmt(now)}）。今の状況に合いそうな対処から順に並べました。いくつ試してもかまいません。
       </p>
       {suggestions.map((s) => {
         const on = tried.includes(s.cause)
@@ -61,7 +61,7 @@ export function SlumpModal({ now, onSymptoms, onTry, onClose }: Props) {
             <p className="do">{s.action}</p>
             <p className="why">
               <span className="cz">原因：{s.name}</span>
-              <span className="dots" aria-label={`確度 ${s.confidence}/3`}>
+              <span className="dots" aria-label={`当てはまりそうな度合い ${s.confidence}/3`}>
                 {'●'.repeat(s.confidence)}
                 <span className="off">{'●'.repeat(3 - s.confidence)}</span>
               </span>
@@ -77,7 +77,7 @@ export function SlumpModal({ now, onSymptoms, onTry, onClose }: Props) {
                 setTried((cur) => (on ? cur.filter((c) => c !== s.cause) : [...cur, s.cause]))
               }}
             >
-              {on ? '✓ やる（取り消す）' : 'やってみる'}
+              {on ? 'やる予定・押すと取り消し' : 'やってみる'}
             </button>
           </div>
         )

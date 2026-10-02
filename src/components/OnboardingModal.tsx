@@ -3,12 +3,13 @@ import type { Settings } from '../lib/types'
 import { DEFAULT_SETTINGS } from '../lib/defaults'
 import { Modal } from './Modal'
 import { PlacePicker } from './PlacePicker'
-import { NotifyFields, SleepFields, WorkFields } from './SettingsFields'
+import { BodyFields, NotifyFields, SleepFields, WorkFields } from './SettingsFields'
 
 const STEPS = [
-  { title: '仕事の時間', lead: 'グラフを表示する範囲と、通知を出す時間に使います。' },
-  { title: 'いつもの睡眠', lead: '朝のチェックインの初期値になります。チェックインしなかった日もこの時刻で計算します。' },
-  { title: '場所', lead: '天気（気温・湿度・気圧・日差し）の取得に使います。' },
+  { title: '仕事の時間', lead: 'グラフに表示する時間帯と、通知を送る時間帯を決めるのに使います。' },
+  { title: 'いつもの睡眠', lead: '朝のチェックインには、この時刻が最初から入っています。チェックインしなかった日も、この時刻で計算します。' },
+  { title: 'からだのこと', lead: '月経周期は、集中のしやすさに大きく関わります。答えた内容はこのブラウザの中だけに保存します。答えたくなければスキップしてください。' },
+  { title: '場所', lead: 'この場所の気温・湿度・気圧・日差しを取得して、予報に使います。' },
   { title: '通知', lead: '' },
 ]
 
@@ -29,8 +30,9 @@ export function OnboardingModal({ onDone }: { onDone: (s: Settings) => void }) {
       {STEPS[step].lead && <p className="lead">{STEPS[step].lead}</p>}
       {step === 0 && <WorkFields s={s} set={set} />}
       {step === 1 && <SleepFields s={s} set={set} />}
-      {step === 2 && <PlacePicker value={s.place} onChange={(place) => set({ place })} />}
-      {step === 3 && <NotifyFields s={s} set={set} />}
+      {step === 2 && <BodyFields s={s} set={set} />}
+      {step === 3 && <PlacePicker value={s.place} onChange={(place) => set({ place })} />}
+      {step === 4 && <NotifyFields s={s} set={set} />}
       <div className="actions">
         {step > 0 && (
           <button type="button" className="btn sec" onClick={() => setStep(step - 1)}>

@@ -19,7 +19,7 @@ describe('pickNotification', () => {
   it('ペースダウンの 5 分前に N1 を出す', () => {
     const n = pickNotification({ ...base, now: 12.75 - 4 / 60 }, fresh)
     expect(n?.id).toBe('n1-12.75')
-    expect(n?.body).toContain('12:45頃から（食後のリズム）')
+    expect(n?.body).toContain('12:45頃から集中が落ちやすくなります（食後のリズム）')
   })
 
   it('同じ区間の N1 は 1 回だけ', () => {

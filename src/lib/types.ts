@@ -1,9 +1,12 @@
+import type { CycleInfo } from './cycle'
+
 /** "HH:MM" 形式の時刻 */
 export type Hhmm = string
 
 export type Level = 1 | 2 | 3
 export type Aircon = 'heat' | 'cool' | 'none'
-export type LogType = 'window' | 'break' | 'water' | 'slump'
+export type Sex = 'female' | 'male' | 'other'
+export type LogType = 'window' | 'break' | 'water' | 'meal' | 'slump'
 export type RemedyResult = 'better' | 'same' | 'unknown' | 'expired'
 
 export interface Place {
@@ -15,12 +18,16 @@ export interface Place {
 export interface Settings {
   workStart: Hhmm
   workEnd: Hhmm
-  lunchStart: Hhmm
-  lunchEnd: Hhmm
   bed: Hhmm
   wake: Hhmm
   place: Place | null
   notify: { n1: boolean; n2: boolean; n3: boolean }
+  /** 未回答なら undefined */
+  sex?: Sex
+  /** 最終月経の開始日（YYYY-MM-DD）。女性を選んだ人だけ */
+  lastPeriod?: string | null
+  /** 月経周期の日数 */
+  cycleLength?: number
 }
 
 export interface Checkin {
@@ -33,6 +40,10 @@ export interface Checkin {
   /** 冷暖房の設定温度（℃）。aircon が none のときは使わない */
   acTemp: number
   skipped: boolean
+  /** チェックインで「今日から月経」を選んだ */
+  periodStarted?: boolean
+  /** periodStarted で上書きする前の最終月経の開始日（取り消し用） */
+  prevLastPeriod?: string | null
 }
 
 export interface LogEvent {
@@ -40,6 +51,8 @@ export interface LogEvent {
   /** その日の 0 時からの時間（小数） */
   at: number
   symptoms?: string[]
+  /** 休憩の長さ（分）。休憩の記録だけに付く */
+  minutes?: number
 }
 
 export interface Remedy {
@@ -63,6 +76,8 @@ export interface DayInput {
   checkin: Checkin
   logs: LogEvent[]
   weather: HourlyWeather
+  /** 月経周期。記録していない人は null */
+  cycle?: CycleInfo | null
 }
 
 export type CauseKey =
@@ -74,4 +89,5 @@ export type CauseKey =
   | 'temp'
   | 'break'
   | 'press'
+  | 'meeting'
   | 'task'

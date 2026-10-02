@@ -4,7 +4,7 @@ import { indoorHumidity } from './humidity'
 import { pressureDrop, weatherAt } from './weather'
 import { hoursSince, lunchDipTime } from './condition'
 
-export const SYMPTOMS = ['眠い', 'ぼーっとする', '目が疲れる', '頭痛', 'イライラ', 'やる気が出ない'] as const
+export const SYMPTOMS = ['眠い', 'ぼーっとする', '目が疲れる', '頭痛', 'イライラ', 'やる気が出ない', 'MTG後でぐったり'] as const
 
 interface Remedial {
   name: string
@@ -23,6 +23,7 @@ const REMEDIES: Record<CauseKey, Remedial> = {
   temp: { name: '暑い', action: '冷房を入れるか、首元を冷やす', log: null, symptoms: ['イライラ'] },
   break: { name: '休憩不足', action: '5分休憩。遠くを見て、肩を回す', log: 'break', symptoms: ['目が疲れる', 'イライラ'] },
   press: { name: '気圧の低下', action: '考える作業を後回しにして、整理や片付けに切り替える', log: null, symptoms: ['頭痛', 'ぼーっとする'] },
+  meeting: { name: 'MTG疲れ', action: '画面から離れて5分歩くかストレッチ。戻ったら次の作業の「最初の1手」だけやる（ファイルを開く、1行書くなど）', log: 'break', symptoms: ['MTG後でぐったり'] },
   task: { name: 'タスクが曖昧', action: '次の一歩を1行だけ書き出して、25分だけやってみる', log: null, symptoms: ['やる気が出ない'] },
 }
 
@@ -53,14 +54,16 @@ export function suggest(d: DayInput, now: number, symptoms: string[], history: R
   const hot = temp >= 20
 
   const base: Record<CauseKey, [number, string]> = {
-    sleep: [(sleep < 6 ? 0.6 : sleep < 6.5 ? 0.3 : 0) + (c.sleepQ === 3 ? 0.25 : 0), `睡眠 ${formatDuration(sleep)}・睡眠の質「${['', 'よく眠れた', 'ふつう', 'いまいち'][c.sleepQ]}」`],
-    lunch: [Math.abs(now - dip) <= 1 ? 0.55 : 0, `今は ${fmt(now)}。食後の谷（${fmt(dip)}頃）に近い時間です`],
-    vent: [vent > 1.5 ? 0.4 + Math.min(0.3, (vent * 60 - 90) / 200) : vent > 1 ? 0.2 : 0, `窓を開けてから ${formatDuration(vent)} たっています`],
-    sun: [rad > 600 && now >= 13 && now <= 17 ? 0.5 : rad > 450 ? 0.2 : 0, `日差しが強い時間帯です（日射 ${Math.round(rad)}W/m²）`],
+    sleep: [(sleep < 6 ? 0.6 : sleep < 6.5 ? 0.3 : 0) + (c.sleepQ === 3 ? 0.25 : 0), `睡眠${formatDuration(sleep)}・睡眠の質「${['', 'よく眠れた', 'ふつう', 'いまいち'][c.sleepQ]}」`],
+    lunch: [dip !== null && Math.abs(now - dip) <= 1 ? 0.55 : 0, dip === null ? '' : `今は${fmt(now)}で、食後に眠くなりやすい時間（${fmt(dip)}頃）の前後です`],
+    vent: [vent > 1.5 ? 0.4 + Math.min(0.3, (vent * 60 - 90) / 200) : vent > 1 ? 0.2 : 0, `窓を開けてから${formatDuration(vent)}たっています`],
+    sun: [rad > 600 && now >= 13 && now <= 17 ? 0.5 : rad > 450 ? 0.2 : 0, `日差しが強い時間帯です（日射${Math.round(rad)}W/m²）`],
     dry: [rh < 25 ? 0.6 : rh < 35 ? 0.45 : 0, `室内の湿度は約${Math.round(rh)}%と推定しています`],
-    temp: [c.aircon === 'none' && (temp > 28 || temp < 12) ? 0.5 : 0, `外気温 ${Math.round(temp)}℃で冷暖房なし`],
-    break: [brk > 2 ? 0.45 + Math.min(0.25, (brk - 2) * 0.2) : brk > 1.5 ? 0.2 : 0, `最後の休憩から ${formatDuration(brk)}`],
-    press: [drop >= 2 ? 0.5 : drop >= 1 ? 0.2 : 0, `気圧が下がっています（前後3時間で ${drop.toFixed(1)}hPa）`],
+    temp: [c.aircon === 'none' && (temp > 28 || temp < 12) ? 0.5 : 0, `外気温が${Math.round(temp)}℃で、冷暖房を使っていません`],
+    break: [brk > 2 ? 0.45 + Math.min(0.25, (brk - 2) * 0.2) : brk > 1.5 ? 0.2 : 0, `最後の休憩から${formatDuration(brk)}たっています`],
+    press: [drop >= 2 ? 0.5 : drop >= 1 ? 0.2 : 0, `気圧が下がっています（前後3時間で${drop.toFixed(1)}hPa）`],
+    // 本人の申告がそのまま根拠になる
+    meeting: [symptoms.includes('MTG後でぐったり') ? 0.6 : 0, 'MTGで話す・聞く・気を遣うことが続き、頭も体も疲れています。オンラインのMTGは座ったまま画面を見続けるので、特に疲れやすくなります'],
     task: [0, '環境や体調に目立つ原因が見当たりません'],
   }
   const others = Math.max(...Object.values(base).map(([s]) => s))

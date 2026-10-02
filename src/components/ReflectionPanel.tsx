@@ -40,12 +40,12 @@ export function ReflectionPanel({ remedies, now, onAnswer }: Props) {
       <h2 id="rfH">ふりかえり</h2>
       {best && (
         <p className="refl-sum">
-          よく効く対処：{short(best[0])}（{best[1].n}回中{best[1].better}回ラクに）
+          ラクになりやすい対処：{short(best[0])}（{best[1].n}回中{best[1].better}回ラクになった）
         </p>
       )}
       {ready.length > 0 && (
         <div className="refl-card">
-          <p className="q">{fmt(ready[0].at)} に試したこと、どうでした？</p>
+          <p className="q">{fmt(ready[0].at)}に試した対処で、ラクになりましたか？</p>
           {ready.map((r) => (
             <div className="rq" key={`${r.cause}-${r.at}`}>
               <span>{r.action}</span>
@@ -62,7 +62,7 @@ export function ReflectionPanel({ remedies, now, onAnswer }: Props) {
       )}
       {waiting.length > 0 && (
         <p className="quiet">
-          {fmt(waiting[0].at)} に試した{waiting.length}つは、{fmt(waiting[0].at + 0.25)} ごろにここで聞きます。
+          {fmt(waiting[0].at)}に試した{waiting.length}つの対処は、{fmt(waiting[0].at + 0.25)}ごろにここで結果を聞きます。
         </p>
       )}
       {recent.length > 0 && (
@@ -74,7 +74,7 @@ export function ReflectionPanel({ remedies, now, onAnswer }: Props) {
           ))}
         </ul>
       )}
-      {empty && <p className="quiet">「集中切れた」で対処を試すと、効いたかどうかをここで記録できます。</p>}
+      {empty && <p className="quiet">「集中切れた」から対処を試すと、ラクになったかどうかをここで記録できます。</p>}
     </section>
   )
 }

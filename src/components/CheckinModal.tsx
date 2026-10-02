@@ -15,12 +15,14 @@ interface Props {
   /** 編集時は今日の回答、新規時はいつもの時刻などを入れた初期値 */
   initial: Checkin
   editing: boolean
+  /** 女性を選んだ人には「今日から月経」を出す */
+  askPeriod: boolean
   onSave: (c: Checkin) => void
   onLater: () => void
   onClose: () => void
 }
 
-export function CheckinModal({ initial, editing, onSave, onLater, onClose }: Props) {
+export function CheckinModal({ initial, editing, askPeriod, onSave, onLater, onClose }: Props) {
   const [bed, setBed] = useState(initial.bed)
   const [wake, setWake] = useState(initial.wake)
   const [sleepQ, setSleepQ] = useState<Level | 0>(editing ? initial.sleepQ : 0)
@@ -28,6 +30,7 @@ export function CheckinModal({ initial, editing, onSave, onLater, onClose }: Pro
   const [symptoms, setSymptoms] = useState<string[]>(editing ? initial.symptoms : [])
   const [aircon, setAircon] = useState<Aircon>(initial.aircon)
   const [acTemp, setAcTemp] = useState(initial.acTemp)
+  const [periodStarted, setPeriodStarted] = useState(Boolean(initial.periodStarted))
   const [showSym, setShowSym] = useState(editing && (initial.cond > 1 || initial.symptoms.length > 0))
 
   const ready = sleepQ !== 0 && cond !== 0
@@ -36,7 +39,7 @@ export function CheckinModal({ initial, editing, onSave, onLater, onClose }: Pro
     <Modal label={editing ? 'チェックインを編集' : '朝のチェックイン'} onClose={onClose}>
       <h3>{editing ? 'チェックインを編集' : 'おはようございます'}</h3>
       <p className="lead">
-        {editing ? '今日の回答を変えると、コンディションと曲線を計算し直します。' : '30秒で、今日のコンディションを計算します。'}
+        {editing ? '回答を変えると、今日のコンディションとグラフを計算し直します。' : '30秒ほどで答えられます。答えた内容から、今日のコンディションを計算します。'}
       </p>
 
       <div className="field">
@@ -89,6 +92,17 @@ export function CheckinModal({ initial, editing, onSave, onLater, onClose }: Pro
         )}
       </div>
 
+      {askPeriod && (
+        <div className="field">
+          <span className="lbl">月経</span>
+          <div className="chips">
+            <button type="button" className="chip" aria-pressed={periodStarted} onClick={() => setPeriodStarted((v) => !v)}>
+              今日から始まった
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="field">
         <span className="lbl">今日の冷暖房</span>
         <div className="row">
@@ -134,7 +148,7 @@ export function CheckinModal({ initial, editing, onSave, onLater, onClose }: Pro
           className="btn"
           disabled={!ready}
           onClick={() =>
-            ready && onSave({ bed, wake, sleepQ, cond, symptoms, aircon, acTemp, skipped: false })
+            ready && onSave({ bed, wake, sleepQ, cond, symptoms, aircon, acTemp, skipped: false, ...(askPeriod && periodStarted ? { periodStarted: true } : {}) })
           }
         >
           {editing ? '保存する' : '今日をはじめる'}

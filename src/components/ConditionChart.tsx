@@ -16,12 +16,14 @@ interface Props {
   now: number
   /** true のとき親の高さいっぱいに描く（1 画面レイアウト） */
   fill: boolean
+  /** 記録のアイコンを押したとき */
+  onEditRecord: (e: LogEvent & { type: RecordType }) => void
 }
 
 const PAD = { l: 34, r: 14, t: 30, b: 32 }
 const isRecord = (e: LogEvent): e is LogEvent & { type: RecordType } => e.type !== 'slump'
 
-export function ConditionChart({ day, hero, curve, zones, now, fill }: Props) {
+export function ConditionChart({ day, hero, curve, zones, now, fill, onEditRecord }: Props) {
   const boxRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ w: 720, h: 270 })
   const [hover, setHover] = useState<{ t: number; pinned: boolean } | null>(null)
@@ -83,8 +85,8 @@ export function ConditionChart({ day, hero, curve, zones, now, fill }: Props) {
         width={W}
         height={H}
         tabIndex={0}
-        role="img"
-        aria-label="時間帯ごとのコンディション予測の曲線。左右キーで1時間ずつ詳細を見られます"
+        role="group"
+        aria-label="時間帯ごとのコンディション予測の曲線。左右キーで1時間ずつ詳細を見られます。記録のアイコンを押すと時刻を直せます"
         onPointerMove={(e) => {
           if (!hover?.pinned) setHover({ t: tFromPointer(e.clientX), pinned: false })
         }}
@@ -144,8 +146,27 @@ export function ConditionChart({ day, hero, curve, zones, now, fill }: Props) {
           const cx = x(e.at)
           const cy = H - PAD.b - 12 - row * 22
           return (
-            <g key={`${e.type}-${e.at}-${i}`} style={{ color: 'var(--accent)' }}>
-              <title>{`${RECORD_LABEL[e.type]} ${fmt(e.at)}`}</title>
+            <g
+              key={`${e.type}-${e.at}-${i}`}
+              className="rec"
+              style={{ color: 'var(--accent)' }}
+              role="button"
+              tabIndex={0}
+              aria-label={`${RECORD_LABEL[e.type]}${e.minutes ? `（${e.minutes}分）` : ''} ${fmt(e.at)}。押すと編集`}
+              onClick={(ev) => {
+                // グラフの表示固定には使わない
+                ev.stopPropagation()
+                onEditRecord(e)
+              }}
+              onKeyDown={(ev) => {
+                if (ev.key === 'Enter' || ev.key === ' ') {
+                  ev.preventDefault()
+                  ev.stopPropagation()
+                  onEditRecord(e)
+                }
+              }}
+            >
+              <title>{`${RECORD_LABEL[e.type]}${e.minutes ? `（${e.minutes}分）` : ''} ${fmt(e.at)}（押すと編集）`}</title>
               <circle cx={cx} cy={cy} r={10} fill="var(--surface)" stroke="var(--line)" />
               <RecordIcon type={e.type} size={13} x={cx - 6.5} y={cy - 6.5} />
             </g>
