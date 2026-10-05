@@ -142,3 +142,12 @@ describe('朝型・夜型', () => {
     expect(e.late).toBeGreaterThan(m.late)
   })
 })
+
+describe('起きる前', () => {
+  it('起床より前の曲線は描かない', () => {
+    const day = { ...sampleDay, checkin: { ...sampleDay.checkin, wake: '08:30' } }
+    const curve = computeCurve(day, computeHero(day))
+    expect(curve.points[0].t).toBe(8.5)
+    expect(curve.range[0]).toBeLessThan(8.5)
+  })
+})

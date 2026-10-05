@@ -57,8 +57,10 @@ export function ConditionChart({ day, hero, curve, zones, now, fill, onEditRecor
   const nowC = clamp(now, t0, t1)
   const path = (arr: [number, number][]) =>
     arr.map((p, i) => `${i ? 'L' : 'M'}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join(' ')
-  const past: [number, number][] = [...pts.filter((p) => p.t < nowC).map((p): [number, number] => [p.t, p.value]), [nowC, valueAt(nowC)]]
-  const future: [number, number][] = [[nowC, valueAt(nowC)], ...pts.filter((p) => p.t > nowC).map((p): [number, number] => [p.t, p.value])]
+  // 曲線は起床から始まる。それより前に開いたときは、全体を予報として描く
+  const lineNow = Math.max(nowC, pts[0].t)
+  const past: [number, number][] = [...pts.filter((p) => p.t < lineNow).map((p): [number, number] => [p.t, p.value]), [lineNow, valueAt(lineNow)]]
+  const future: [number, number][] = [[lineNow, valueAt(lineNow)], ...pts.filter((p) => p.t > lineNow).map((p): [number, number] => [p.t, p.value])]
 
   const hours: number[] = []
   for (let h = Math.ceil(t0); h <= Math.floor(t1); h++) hours.push(h)
@@ -173,7 +175,7 @@ export function ConditionChart({ day, hero, curve, zones, now, fill, onEditRecor
           )
         })}
 
-        {now >= t0 && now <= t1 && (
+        {now >= pts[0].t && now <= t1 && (
           <g>
             <line x1={x(nowC)} x2={x(nowC)} y1={PAD.t} y2={H - PAD.b} stroke="var(--ink)" opacity={0.35} />
             <circle cx={x(nowC)} cy={y(valueAt(nowC))} r={5} fill="var(--accent)" stroke="var(--surface)" strokeWidth={2} />

@@ -145,12 +145,15 @@ export interface Curve {
   range: [number, number]
 }
 
-/** 仕様 5-3：15 分刻みの曲線（仕事時間の前後 2 時間） */
+/** 仕様 5-3：15 分刻みの曲線（仕事時間の前後 2 時間）。起きる前の時間は描かない */
 export function computeCurve(d: DayInput, hero: Hero): Curve {
   const [w0, w1] = workRange(d)
   const range: [number, number] = [w0 - 2, w1 + 2]
+  // 仕事の終わりより後に起きる（夜勤など）ときは、全体を描く
+  const wake = toHours(d.checkin.wake)
+  const from = wake > range[0] && wake < w1 ? wake : range[0]
   const raw: { t: number; parts: Components; d: number }[] = []
-  for (let t = range[0]; t <= range[1] + 1e-9; t += 0.25) {
+  for (let t = from; t <= range[1] + 1e-9; t += 0.25) {
     const parts = components(d, t, hero.sleep)
     raw.push({ t, parts, d: sum(parts) })
   }
