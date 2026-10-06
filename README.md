@@ -48,7 +48,7 @@
 ## データの扱い
 
 - 設定・チェックイン・記録は、すべて使っているブラウザの localStorage に保存します。開発者を含め、外部のサーバーには送りません
-- 外と通信するのは、天気の取得と場所の検索だけです（[Open-Meteo](https://open-meteo.com/)）。このとき送るのは、選んだ場所の緯度・経度と検索した地名だけです
+- 外と通信するのは、天気の取得と場所の検索（[Open-Meteo](https://open-meteo.com/)）と、気温の実測の取得（[気象庁アメダス](https://www.jma.go.jp/bosai/map.html#contents=amedas)）だけです。Open-Meteo に送るのは、選んだ場所の緯度・経度と検索した地名だけです。アメダスには場所を送りません（観測点の一覧をまとめて取得し、最寄りの観測点はブラウザの中で選びます）
 - 別のブラウザや別の PC とは記録を共有できません。ブラウザの閲覧データを消すと、記録も消えます
 - 「設定」→「データ」から、記録を JSON でコピーしたり、すべて削除したりできます
 
@@ -82,6 +82,7 @@ npm run build   # dist/ に静的ファイルを出力
 | フレームワーク | Vite + React + TypeScript（静的 SPA） |
 | データ | ブラウザの localStorage（ログインなし） |
 | 天気・場所検索 | Open-Meteo（API キー不要、ブラウザから直接呼ぶ） |
+| 気温の実測 | 気象庁アメダス（予報の気温を補正する） |
 | テスト | Vitest |
 | 公開 | GitHub Pages |
 
@@ -89,11 +90,12 @@ npm run build   # dist/ に静的ファイルを出力
 src/
   App.tsx        画面全体の組み立てと記録の更新
   components/    グラフ、パネル、モーダル（チェックイン・集中切れた・休憩・記録の編集・設定・初回設定）
-  hooks/         保存（useStore）、天気（useWeather）、現在時刻、通知、1 画面レイアウト
+  hooks/         保存（useStore）、天気（useWeather）、アメダス（useAmedas）、現在時刻、通知、1 画面レイアウト
 src/lib/
   types.ts       データの型
   time.ts        時刻の変換・表示
   weather.ts     Open-Meteo の取得と補間
+  amedas.ts      アメダスの最寄り観測点・最新の気温・予報の補正
   humidity.ts    推定室内湿度
   cycle.ts       月経周期
   condition.ts   今日のコンディション・曲線・ペースダウン区間

@@ -10,6 +10,8 @@ import { hoursOf, useNow } from './hooks/useNow'
 import { emptyStore, useStore } from './hooks/useStore'
 import { NEUTRAL_WEATHER, useWeather } from './hooks/useWeather'
 import { useNotifications } from './hooks/useNotifications'
+import { useAmedas } from './hooks/useAmedas'
+import { applyObservation } from './lib/amedas'
 import { useFitLayout } from './hooks/useFitLayout'
 import { HeroPanel } from './components/HeroPanel'
 import { StatusPanel } from './components/StatusPanel'
@@ -58,8 +60,12 @@ export default function App() {
 
   const settings = store.settings
   const weatherState = useWeather(settings?.place ?? null, today)
-  const weather =
+  const forecast =
     weatherState.status === 'ready' ? weatherState.data : weatherState.status === 'error' && weatherState.data ? weatherState.data : NEUTRAL_WEATHER
+  // 予報は外れることがあるので、近くのアメダスの実測で気温を補正する。1 時間以上前の実測は使わない
+  const amedas = useAmedas(settings?.place ?? null, today)
+  const observed = amedas && forecast !== NEUTRAL_WEATHER && now - amedas.obs.at <= 1 ? amedas : null
+  const weather = observed ? applyObservation(forecast, observed.obs) : forecast
   const weatherNote =
     weatherState.status === 'none'
       ? '設定で場所を選ぶと、天気を予報に反映できます'
@@ -219,7 +225,7 @@ export default function App() {
               />
             </div>
             <div className="col">
-              <StatusPanel day={day} now={now} weatherNote={weatherNote} onAircon={changeAircon} onTemp={changeTemp} onRecord={record} mealHint={mealPreview(day, now)} />
+              <StatusPanel day={day} now={now} weatherNote={weatherNote} observed={observed} onAircon={changeAircon} onTemp={changeTemp} onRecord={record} mealHint={mealPreview(day, now)} />
               <ReflectionPanel remedies={remedies} now={now} onAnswer={answer} />
               <button type="button" className="slump" onClick={() => setDialog('slump')}>
                 <PulseIcon />

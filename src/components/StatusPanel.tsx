@@ -5,11 +5,14 @@ import { weatherAt } from '../lib/weather'
 import { fmt, formatDuration, toHours } from '../lib/time'
 import { RecordIcon } from './icons'
 import type { RecordType } from '../lib/records'
+import type { Amedas } from '../hooks/useAmedas'
 
 interface Props {
   day: DayInput
   now: number
   weatherNote: string | null
+  /** 近くのアメダスの実測。あれば気温はこれを出す */
+  observed: Amedas | null
   onAircon: (aircon: Aircon) => void
   onTemp: (delta: number) => void
   onRecord: (type: RecordType) => void
@@ -29,9 +32,9 @@ const TAPS: [RecordType, string][] = [
   ['meal', 'ご飯食べた'],
 ]
 
-export function StatusPanel({ day, now, weatherNote, onAircon, onTemp, onRecord, mealHint }: Props) {
+export function StatusPanel({ day, now, weatherNote, observed, onAircon, onTemp, onRecord, mealHint }: Props) {
   const { weather: w, checkin: c, logs } = day
-  const temp = weatherAt(w, 'temp', now)
+  const temp = observed ? observed.obs.temp : weatherAt(w, 'temp', now)
   const p = weatherAt(w, 'pressure', now)
   const dp = weatherAt(w, 'pressure', now + 3) - p
   const cloud = weatherAt(w, 'cloud', now)
@@ -64,6 +67,8 @@ export function StatusPanel({ day, now, weatherNote, onAircon, onTemp, onRecord,
               {Math.abs(dp).toFixed(1)}
               <br />
               <span className="label">3時間後</span>
+              <br />
+              <span className="label">{observed ? `気温は${observed.station.name}の実測（約${Math.round(observed.station.km)}km）` : '気温は予報'}</span>
             </span>
           )}
         </li>
