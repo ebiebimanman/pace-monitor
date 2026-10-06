@@ -63,6 +63,15 @@ const NOTIFY: [keyof Settings['notify'], string, string][] = [
 export function NotifyFields({ s, set }: { s: Settings; set: Patch }) {
   const supported = typeof Notification !== 'undefined'
   const [permission, setPermission] = useState<NotificationPermission>(supported ? Notification.permission : 'denied')
+  const [tested, setTested] = useState(false)
+  const sendTest = () => {
+    try {
+      new Notification('テスト通知', { body: 'この通知が見えていれば、ペースダウン時間のお知らせも届きます。', tag: 'test' })
+    } catch {
+      // 送れなくても画面は動かす
+    }
+    setTested(true)
+  }
   return (
     <div className="field">
       <span className="lbl">通知</span>
@@ -86,6 +95,14 @@ export function NotifyFields({ s, set }: { s: Settings; set: Patch }) {
         <button type="button" className="btn sec" onClick={() => Notification.requestPermission().then(setPermission)}>
           ブラウザの通知を許可する
         </button>
+      )}
+      {supported && permission === 'granted' && (
+        <button type="button" className="btn sec" onClick={sendTest}>
+          テスト通知を送る
+        </button>
+      )}
+      {tested && (
+        <span className="quiet">届かないときは、Mac の「システム設定 › 通知」でブラウザの通知がオンか、集中モードがオフかを確認してください。</span>
       )}
       {supported && permission === 'denied' && (
         <span className="quiet">ブラウザで通知がブロックされています。サイトの設定から許可してください。</span>
